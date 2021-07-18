@@ -1,7 +1,7 @@
 {
-  "name": "ts-starter",
+  "name": "@curium.rocks/json-chronicler",
   "version": "0.1.0",
-  "description": "A simple starter template for a node typescript library containing eslint, sonarqube-scanner, chai, mocha, to name a few things",
+  "description": "",
   "main": "build/src/index.js",
   "scripts": {
     "test": "nyc mocha --require ts-node/register --require source-map-support/register --recursive 'test/**/*.ts'",
@@ -10,20 +10,20 @@
     "clean": "rm -fr build",
     "prepare": "npm run build",
     "doc": "typedoc src/lib.ts",
-    "sonarscan": "sonar-scanner -Dsonar.qualitygate.wait=true -Dsonar.projectKey=<replace-with-your-project-key> -Dsonar.sources=. -Dsonar.host.url=https://$SONAR_QUBE_HOST_NAME -Dsonar.login=$SONAR_LOGIN -Dsonar.javascript.lcov.reportPath=coverage/"
+    "sonarscan": "sonar-scanner -Dsonar.qualitygate.wait=true -Dsonar.organization=curium-rocks -Dsonar.projectKey=curium-rocks_json-chronicler -Dsonar.sources=. -Dsonar.host.url=https://sonarcloud.io -Dsonar.login=$SONARQUBE_KEY -Dsonar.javascript.lcov.reportPath=coverage/"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/akboyd88/node-ts-starter.git"
+    "url": "git+https://github.com/curium-rocks/json-chronicler.git"
   },
   "keywords": [
-    "starter",
-    "template",
-    "typescript",
-    "node.js",
-    "eslint",
-    "jenkins",
-    "sonarqube"
+    "IDataEmitter",
+    "json",
+    "compressed",
+    "rolling archives",
+    "persist",
+    "data store",
+    "chronicler"
   ],
   "devDependencies": {
     "@types/chai": "^4.2.21",
@@ -59,7 +59,7 @@
   "author": "",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/akboyd88/node-ts-starter/issues"
+    "url": "https://github.com/curium-rocks/json-chronicler/issues"
   },
-  "homepage": "https://github.com/akboyd88/node-ts-starter#readme"
+  "homepage": "https://github.com/curium-rocks/json-chronicler#readme"
 }
