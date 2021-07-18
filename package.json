@@ -1,0 +1,65 @@
+{
+  "name": "ts-starter",
+  "version": "0.1.0",
+  "description": "A simple starter template for a node typescript library containing eslint, sonarqube-scanner, chai, mocha, to name a few things",
+  "main": "build/src/index.js",
+  "scripts": {
+    "test": "nyc mocha --require ts-node/register --require source-map-support/register --recursive 'test/**/*.ts'",
+    "build": "node_modules/typescript/bin/tsc --project ./",
+    "lint": "eslint src --ext .ts",
+    "clean": "rm -fr build",
+    "prepare": "npm run build",
+    "doc": "typedoc src/lib.ts",
+    "sonarscan": "sonar-scanner -Dsonar.qualitygate.wait=true -Dsonar.projectKey=<replace-with-your-project-key> -Dsonar.sources=. -Dsonar.host.url=https://$SONAR_QUBE_HOST_NAME -Dsonar.login=$SONAR_LOGIN -Dsonar.javascript.lcov.reportPath=coverage/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/akboyd88/node-ts-starter.git"
+  },
+  "keywords": [
+    "starter",
+    "template",
+    "typescript",
+    "node.js",
+    "eslint",
+    "jenkins",
+    "sonarqube"
+  ],
+  "devDependencies": {
+    "@types/chai": "^4.2.21",
+    "@types/mocha": "^8.2.3",
+    "@types/node": "^16.3.1",
+    "@typescript-eslint/eslint-plugin": "^4.28.3",
+    "chai": "^4.3.4",
+    "eslint": "^7.30.0",
+    "eslint-config-google": "^0.14.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-import": "^2.23.4",
+    "eslint-plugin-prettier": "^3.4.0",
+    "mocha": "^9.0.2",
+    "nyc": "^15.1.0",
+    "sonarqube-scanner": "^2.8.1",
+    "ts-node": "^10.1.0",
+    "typedoc": "^0.21.4",
+    "typescript": "^4.3.5"
+  },
+  "nyc": {
+    "extension": [
+      ".ts",
+      ".tsx"
+    ],
+    "exclude": [
+      "**/*.d.ts"
+    ],
+    "reporter": [
+      "lcov"
+    ],
+    "all": true
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/akboyd88/node-ts-starter/issues"
+  },
+  "homepage": "https://github.com/akboyd88/node-ts-starter#readme"
+}

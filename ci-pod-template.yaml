@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    job: ci-node-starter-template
+spec:
+  containers:
+  - name: node-build
+    image: node:latest
+    command:
+    - cat
+    tty: true
+    env: 
+    - name: SONAR_BINARY_CACHE
+      value: "/tmp/sonarqube-scanner-cache"
+    - name: SONAR_LOGIN
+      valueFrom:
+        secretKeyRef:
+          name: sonarpwd
+          key: password
+    - name: NODE_ACCESS_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: npm
+          key: accesstoken
+    - name: SONAR_QUBE_HOST_NAME
+      valueFrom:
+        secretKeyRef:
+          name: sonarhost
+          key: url

@@ -1,0 +1,14 @@
+/src
+.npmignore
+.eslintrc.js
+ci-pod-template.yaml
+Jenkinsfile
+renovate.json
+tsconfig.json
+scripts
+.nyc_output
+coverage
+.scannerwork
+test
+.DS_Store
+docs
