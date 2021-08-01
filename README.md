@@ -1,32 +1,72 @@
-# Node-TS-Starter
-This is a starter template to reduce boiler plate setup to get a node.js typescript project up and running. 
+# Json-Chronicler
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=curium-rocks_json-chronicler&metric=alert_status)](https://sonarcloud.io/dashboard?id=curium-rocks_json-chronicler) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=curium-rocks_json-chronicler&metric=coverage)](https://sonarcloud.io/dashboard?id=curium-rocks_json-chronicler) [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=curium-rocks_json-chronicler&metric=security_rating)](https://sonarcloud.io/dashboard?id=curium-rocks_json-chronicler)
 
-# What does it contain
-- Eslint 
-- Renovate
-- typescript
-- Mocha and Chai
-- Jenkinsfile (configured for K8S agent)
-- .gitignore, .eslintrc.js, .npmignore
-- Setup to get code coverage results and submit them to sonarqube
+## What does it do?
+This library facilitates saving records to local files in JSON format. It will 
+append a record to a json file and honor chronological rotation settings. 
 
-## Jenkinsfile
-This template is coming from a Jenkins/Blue Ocean setup using the K8S agent, github actions may be added as well later.
-The Jenkinsfile will do the following, on any push it will execute typical linting, tests, doc generation tests and a sonar qube scan. If the quality gates on the sonar qube scan fail, the build fails.
+## How to install
+`npm install --save @curium.rocks/json-chronicler`
 
-On push to development, it does all the regular tests but will also bump the pre release version and push to NPM as an alpha.
+## How do I use it?
 
-On push to master, it will bump the minor version and publish to NPM.
+### Setup your options
 
-All build events will be sent to mattermost.
+```typescript
+import {JsonChroniclerOptions} from "@curium.rocks/json-chronicler";
 
-## Expected secrets
-You will need to create secrets for sonar qube, and npm. Git credentials are pulled from Jenkins. Refere to ci-pod-template.yaml for details on names and expected values.
+const logOptions: JsonChroniclerOptions = {
+    name: "yourLoggerName", // used for prefixing the log files
+    logDirectory: "./logs", // path to your log directory
+    rotationSettings: {
+        days: 7,
+        hours: 1,
+        minutes: 5,
+        milliseconds: 750
+    } // sums all the properties and will rotate the logs on that interval
+}
+```
+### Create and save a record
 
-## Helpful links
-- [Renovate](https://docs.renovatebot.com/helm-charts)
-- [Jenkins](https://charts.jenkins.io)
-- [Harbor](https://github.com/goharbor/harbor-helm)
-- [Gitea](https://gitea.com/gitea/helm-chart/)
-- [Mattermost](https://helm.mattermost.com)
-- [Sonarqube](https://github.com/Oteemo/charts/tree/master/charts/sonarqube)
+```typescript
+import {JsonChronicler} from "@curium.rocks/json-chronicler";
+import {IChronicler} from "@curium.rocks/data-emitter-base";
+
+const chronciler: IChronicler = new JsonChronicler(logOptions);
+await chronciler.saveRecord({
+    toJSON: () => {
+        return {
+            property1: 0.123,
+            property2: "blue"
+        }
+    }
+})
+```
+
+### Make your models compatible
+
+```typescript
+import {IJsonSerializable} from "@curium.rocks/data-emitter-base";
+
+/**
+ * Example implementation of a model that could be directly passed to
+ * a chronicler
+ */
+export class Model implements IJsonSerializable {
+    private hidden = "will not be saved";
+    private property1 = 0.123;
+    private property2 = "blue";
+
+    /**
+     * Provide a map with the desired names and values
+     * @return {Record<string, unknown>} map that will be serialized
+     */
+    toJSON(): Record<string, unknown> {
+        return {
+            desiredSavedPropName1: this.property1,
+            desiredSavedPropName2: this.property2
+        };
+    }
+}
+
+```
