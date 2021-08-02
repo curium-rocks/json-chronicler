@@ -1,7 +1,7 @@
 {
   "name": "@curium.rocks/json-chronicler",
   "version": "0.1.1-0",
-  "description": "",
+  "description": "Persists objects in JSON format to rolling archive files",
   "main": "build/src/index.js",
   "scripts": {
     "test": "nyc mocha --require ts-node/register --require source-map-support/register --recursive 'test/**/*.ts'",
