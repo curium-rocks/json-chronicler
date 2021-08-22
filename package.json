@@ -31,7 +31,6 @@
     "@types/node": "^16.4.0",
     "@typescript-eslint/eslint-plugin": "^4.28.3",
     "chai": "^4.3.4",
-    "chai-as-promised": "^7.1.1",
     "eslint": "^7.31.0",
     "eslint-config-google": "^0.14.0",
     "eslint-config-prettier": "^8.3.0",
@@ -68,6 +67,6 @@
   },
   "homepage": "https://github.com/curium-rocks/json-chronicler#readme",
   "dependencies": {
-    "@curium.rocks/data-emitter-base": "^0.1.1-alpha.30"
+    "@curium.rocks/data-emitter-base": "^0.1.1-alpha.31"
   }
 }

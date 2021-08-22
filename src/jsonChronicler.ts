@@ -1,11 +1,9 @@
-import {LoggerFacade, IRotatingFileChronicler, IJsonSerializable} from '@curium.rocks/data-emitter-base';
+import {LoggerFacade, IRotatingFileChronicler, IJsonSerializable, IClassifier} from '@curium.rocks/data-emitter-base';
 import fs from 'fs/promises';
 import {pipeline} from 'stream/promises';
 import {createWriteStream, createReadStream} from "fs";
 import zlib from 'zlib';
-
 import path from 'path';
-import { IClassifier } from '@curium.rocks/data-emitter-base/build/src/dataEmitter';
 
 
 export interface JsonChroniclerOptions extends IClassifier {

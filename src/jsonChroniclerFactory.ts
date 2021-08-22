@@ -1,10 +1,10 @@
-import {BaseChroniclerFactory, IChronicler, IChroniclerDescription, IChroniclerFactory} from '@curium.rocks/data-emitter-base';
+import {BaseChroniclerFactory, IChronicler, IChroniclerDescription} from '@curium.rocks/data-emitter-base';
 import { isRotationOptions, JsonChronicler, JsonChroniclerOptions, RotationOptions } from './jsonChronicler';
 
 /**
  * 
  */
-export class JsonChroniclerFactory extends BaseChroniclerFactory implements IChroniclerFactory{
+export class JsonChroniclerFactory extends BaseChroniclerFactory {
 
     /**
      * Create a json chronicler
