@@ -5,13 +5,14 @@ import {createWriteStream, createReadStream} from "fs";
 import zlib from 'zlib';
 
 import path from 'path';
+import { IClassifier } from '@curium.rocks/data-emitter-base/build/src/dataEmitter';
 
 
-export interface JsonChroniclerOptions {
+export interface JsonChroniclerOptions extends IClassifier {
     logger?: LoggerFacade;
     rotationSettings: RotationOptions;
     logDirectory: string;
-    name: string;
+    logName: string;
 }
 
 export interface RotationOptions {
@@ -40,9 +41,24 @@ export function getMsFromRotationOptions (options: RotationOptions) : number {
 }
 
 /**
+ * Check if an object conforms to the RotationOptions interface
+ * @param {unknown} options 
+ * @return {boolean} 
+ */
+export function isRotationOptions (options: unknown) : boolean {
+    if(options == null) return false;
+    if(typeof options != "object") return false;
+    // all properties for rotation options are nullable soooo as long as it's an object and not null
+    // it conforms to the contract for now.
+    return true;    
+}
+
+/**
  * Persist events to a rolling JSON file
  */
 export class JsonChronicler implements IRotatingFileChronicler {
+
+    public static readonly TYPE: string = "JSON-CHRONICLER";
 
     private firstWrite = true;
     private fileHandle: fs.FileHandle|undefined;
@@ -54,6 +70,32 @@ export class JsonChronicler implements IRotatingFileChronicler {
     private readonly rotationIntervalMs: number;
     private lastRotationMs: number|undefined;
     private disposed = false;
+    private _id: string;
+    private _name: string;
+    private _description: string;
+
+    /**
+     * 
+     */
+    get id(): string {
+        return this._id;
+    }
+
+    /**
+     * 
+     */
+    get description(): string {
+        return this._description;
+    }
+
+    /**
+     * 
+     */
+    get name(): string {
+        return this._name;
+    }
+
+
 
     /**
      *
@@ -63,9 +105,13 @@ export class JsonChronicler implements IRotatingFileChronicler {
         this.logger = options.logger;
         this.rotationSettings = options.rotationSettings;
         this.logDirectory = options.logDirectory;
-        this.logName = options.name;
+        this.logName = options.logName;
         this.rotationIntervalMs = getMsFromRotationOptions(options.rotationSettings);
+        this._name = options.name;
+        this._description = options.description;
+        this._id = options.id;
     }
+
 
     /**
      * @return {string} filename for next archive
