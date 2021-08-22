@@ -8,11 +8,14 @@ const LOG_DIR = './logs';
 
 const DEFAULT_OPTIONS = {
     logDirectory: LOG_DIR,
-    name: 'test',
+    logName: 'test',
     rotationSettings: {
         milliseconds: 500
     },
-    reservedSpacePercentage: 1
+    reservedSpacePercentage: 1,
+    name: "test-name",
+    description: "test-desc",
+    id: "test-id"
 }
 
 const sleep = async (milliseconds:number) : Promise<void> => {
@@ -26,10 +29,13 @@ const sleep = async (milliseconds:number) : Promise<void> => {
 const getOptions = (logName:string): JsonChroniclerOptions =>  {
     return {
         logDirectory: './logs',
-        name: logName,
+        logName: logName,
         rotationSettings: {
             seconds: 500
-        }
+        },
+        name: "test-name",
+        description: "test-desc",
+        id: "test-id"
     }
 }
 
@@ -319,7 +325,7 @@ describe( 'JsonChronicler', function() {
                     }
                 })
                 const fileName = chronicler.getCurrentFilename();
-                expect(fileName).to.match(new RegExp(`${DEFAULT_OPTIONS.name}\\.\\d*\\.json`));
+                expect(fileName).to.match(new RegExp(`${DEFAULT_OPTIONS.logName}\\.\\d*\\.json`));
             } finally {
                 chronicler.dispose();
             }

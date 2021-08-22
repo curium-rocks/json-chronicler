@@ -1,17 +1,16 @@
-import {LoggerFacade, IRotatingFileChronicler, IJsonSerializable} from '@curium.rocks/data-emitter-base';
+import {LoggerFacade, IRotatingFileChronicler, IJsonSerializable, IClassifier} from '@curium.rocks/data-emitter-base';
 import fs from 'fs/promises';
 import {pipeline} from 'stream/promises';
 import {createWriteStream, createReadStream} from "fs";
 import zlib from 'zlib';
-
 import path from 'path';
 
 
-export interface JsonChroniclerOptions {
+export interface JsonChroniclerOptions extends IClassifier {
     logger?: LoggerFacade;
     rotationSettings: RotationOptions;
     logDirectory: string;
-    name: string;
+    logName: string;
 }
 
 export interface RotationOptions {
@@ -40,9 +39,24 @@ export function getMsFromRotationOptions (options: RotationOptions) : number {
 }
 
 /**
+ * Check if an object conforms to the RotationOptions interface
+ * @param {unknown} options 
+ * @return {boolean} 
+ */
+export function isRotationOptions (options: unknown) : boolean {
+    if(options == null) return false;
+    if(typeof options != "object") return false;
+    // all properties for rotation options are nullable soooo as long as it's an object and not null
+    // it conforms to the contract for now.
+    return true;    
+}
+
+/**
  * Persist events to a rolling JSON file
  */
 export class JsonChronicler implements IRotatingFileChronicler {
+
+    public static readonly TYPE: string = "JSON-CHRONICLER";
 
     private firstWrite = true;
     private fileHandle: fs.FileHandle|undefined;
@@ -54,6 +68,32 @@ export class JsonChronicler implements IRotatingFileChronicler {
     private readonly rotationIntervalMs: number;
     private lastRotationMs: number|undefined;
     private disposed = false;
+    private _id: string;
+    private _name: string;
+    private _description: string;
+
+    /**
+     * 
+     */
+    get id(): string {
+        return this._id;
+    }
+
+    /**
+     * 
+     */
+    get description(): string {
+        return this._description;
+    }
+
+    /**
+     * 
+     */
+    get name(): string {
+        return this._name;
+    }
+
+
 
     /**
      *
@@ -63,9 +103,13 @@ export class JsonChronicler implements IRotatingFileChronicler {
         this.logger = options.logger;
         this.rotationSettings = options.rotationSettings;
         this.logDirectory = options.logDirectory;
-        this.logName = options.name;
+        this.logName = options.logName;
         this.rotationIntervalMs = getMsFromRotationOptions(options.rotationSettings);
+        this._name = options.name;
+        this._description = options.description;
+        this._id = options.id;
     }
+
 
     /**
      * @return {string} filename for next archive
@@ -201,8 +245,8 @@ export class JsonChronicler implements IRotatingFileChronicler {
      * @return {Promise<void>}
      */
     public async compactLogs(): Promise<void> {
-        const logMatch = new RegExp(`${this.logName}.*\\.json`);
-        const compressMatch = new RegExp('.*\\.json.gz');
+        const logMatch = `${this.logName}.*\\.json`;
+        const compressMatch = '.*\\.json.gz';
 
         // get the list of files in the log directory without .gz
         const files = (await fs.readdir(this.logDirectory))
