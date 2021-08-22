@@ -245,8 +245,8 @@ export class JsonChronicler implements IRotatingFileChronicler {
      * @return {Promise<void>}
      */
     public async compactLogs(): Promise<void> {
-        const logMatch = new RegExp(`${this.logName}.*\\.json`);
-        const compressMatch = new RegExp('.*\\.json.gz');
+        const logMatch = `${this.logName}.*\\.json`;
+        const compressMatch = '.*\\.json.gz';
 
         // get the list of files in the log directory without .gz
         const files = (await fs.readdir(this.logDirectory))
