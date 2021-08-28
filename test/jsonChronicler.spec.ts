@@ -3,6 +3,9 @@ import { expect } from 'chai';
 import {getMsFromRotationOptions, JsonChronicler, JsonChroniclerOptions} from "../src/jsonChronicler";
 import fs from "fs/promises";
 import * as path from "path";
+import { JsonChroniclerFactory } from '../src/jsonChroniclerFactory';
+import { IChroniclerDescription, IFormatSettings } from '@curium.rocks/data-emitter-base';
+import crypto from 'crypto';
 
 const LOG_DIR = './logs';
 
@@ -16,6 +19,20 @@ const DEFAULT_OPTIONS = {
     name: "test-name",
     description: "test-desc",
     id: "test-id"
+}
+
+const DEFAULT_DESC: IChroniclerDescription = {
+    name: 'test-name',
+    id: 'test-id',
+    type: JsonChronicler.TYPE,
+    description: 'test-description',
+    chroniclerProperties: {
+        logName: 'test-logname',
+        logDirectory: './logs',
+        rotationSettings: {
+            seconds: 300
+        }
+    }    
 }
 
 const sleep = async (milliseconds:number) : Promise<void> => {
@@ -38,6 +55,8 @@ const getOptions = (logName:string): JsonChroniclerOptions =>  {
         id: "test-id"
     }
 }
+
+const factory = new JsonChroniclerFactory()
 
 describe('getMsFromRotationOptions()', function(){
     it('should sum everything', function() {
@@ -72,6 +91,37 @@ describe('getMsFromRotationOptions()', function(){
     })
 })
 describe( 'JsonChronicler', function() {
+    describe('serializeState()', function() {
+        it('Should allow plaintext restoration', async function() {
+            const chronicler = await factory.buildChronicler(DEFAULT_DESC) as JsonChronicler;
+            const format : IFormatSettings = {
+                encrypted: false,
+                type: JsonChronicler.TYPE
+            }
+            const state = await chronicler.serializeState(format);
+            const recreatedChronciler = await factory.recreateChronicler(state, format) as JsonChronicler;
+            expect(recreatedChronciler.description).to.be.eq(chronicler.description);
+            expect(recreatedChronciler.name).to.be.eq(chronicler.name);
+            expect(recreatedChronciler.id).to.be.eq(chronicler.id);
+            expect(JSON.stringify(recreatedChronciler.getChroniclerProperties())).to.be.eq(JSON.stringify(chronicler.getChroniclerProperties()));
+        });
+        it('Should allow ciphertext restoration', async function () {
+            const chronicler = await factory.buildChronicler(DEFAULT_DESC) as JsonChronicler;
+            const format : IFormatSettings = {
+                encrypted: true,
+                type: JsonChronicler.TYPE,
+                algorithm: 'aes-256-gcm',
+                key: crypto.randomBytes(32).toString('base64'),
+                iv: crypto.randomBytes(16).toString('base64')
+            }
+            const state = await chronicler.serializeState(format);
+            const recreatedChronciler = await factory.recreateChronicler(state, format) as JsonChronicler;
+            expect(recreatedChronciler.description).to.be.eq(chronicler.description);
+            expect(recreatedChronciler.name).to.be.eq(chronicler.name);
+            expect(recreatedChronciler.id).to.be.eq(chronicler.id);
+            expect(JSON.stringify(recreatedChronciler.getChroniclerProperties())).to.be.eq(JSON.stringify(chronicler.getChroniclerProperties()));
+        });
+    })
     describe('saveRecord()', function () {
         it('should persist data to store', async function(){
             const chronicler = new JsonChronicler(getOptions("saveRecordTest"));
@@ -307,7 +357,7 @@ describe( 'JsonChronicler', function() {
                     }
                 });
             } catch (e) {
-                err = e;
+                err = e as Error;
             }
             expect(err).to.not.be.null;
 

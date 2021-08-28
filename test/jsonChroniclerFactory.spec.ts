@@ -38,7 +38,7 @@ describe( 'JsonChroniclerFactory', function() {
             try {
                 await FACTORY.buildChronicler(INVALID_OPTION);
             } catch(error) {
-                err = error;
+                err = error as Error;
             }
             expect(err).to.not.be.null;
         });
