@@ -4,6 +4,7 @@ import {pipeline} from 'stream/promises';
 import {createWriteStream, createReadStream} from "fs";
 import zlib from 'zlib';
 import path from 'path';
+import { BaseChronicler } from '@curium.rocks/data-emitter-base/build/src/chronicler';
 
 
 export interface JsonChroniclerOptions extends IClassifier {
@@ -54,8 +55,7 @@ export function isRotationOptions (options: unknown) : boolean {
 /**
  * Persist events to a rolling JSON file
  */
-export class JsonChronicler implements IRotatingFileChronicler {
-
+export class JsonChronicler extends BaseChronicler implements IRotatingFileChronicler {
     public static readonly TYPE: string = "JSON-CHRONICLER";
 
     private firstWrite = true;
@@ -68,30 +68,6 @@ export class JsonChronicler implements IRotatingFileChronicler {
     private readonly rotationIntervalMs: number;
     private lastRotationMs: number|undefined;
     private disposed = false;
-    private _id: string;
-    private _name: string;
-    private _description: string;
-
-    /**
-     * 
-     */
-    get id(): string {
-        return this._id;
-    }
-
-    /**
-     * 
-     */
-    get description(): string {
-        return this._description;
-    }
-
-    /**
-     * 
-     */
-    get name(): string {
-        return this._name;
-    }
 
 
 
@@ -100,6 +76,13 @@ export class JsonChronicler implements IRotatingFileChronicler {
      * @param {JsonChroniclerOptions} options
      */
     constructor(options:JsonChroniclerOptions) {
+        super({
+            id: options.id,
+            name: options.name,
+            description: options.description, 
+            type: JsonChronicler.TYPE,
+            chroniclerProperties: options
+        });
         this.logger = options.logger;
         this.rotationSettings = options.rotationSettings;
         this.logDirectory = options.logDirectory;
@@ -222,7 +205,7 @@ export class JsonChronicler implements IRotatingFileChronicler {
     }
 
     /**
-     *
+     * Compress a plain text log file
      * @param {string} logName
      * @return {Promise<void>}
      * @private
@@ -242,6 +225,7 @@ export class JsonChronicler implements IRotatingFileChronicler {
     }
 
     /**
+     * Compress rotated logs
      * @return {Promise<void>}
      */
     public async compactLogs(): Promise<void> {
@@ -263,6 +247,7 @@ export class JsonChronicler implements IRotatingFileChronicler {
     }
 
     /**
+     * Get the filename of the active log file
      * @return {string}
      */
     public getCurrentFilename(): string {
@@ -270,7 +255,8 @@ export class JsonChronicler implements IRotatingFileChronicler {
     }
 
     /**
-     * 
+     * Dipose of any resources managed by the chronicler that
+     * aren't automatically cleaned up
      */
     public dispose(): void {
         this.disposed = true;
@@ -278,6 +264,30 @@ export class JsonChronicler implements IRotatingFileChronicler {
             this.fileHandle.write(']').then(()=>{
                 return this.fileHandle?.close();
             })
+        }
+    }
+
+    /**
+     * The type of the chronicler
+     * @return {string}
+     */
+    getType(): string {
+        return JsonChronicler.TYPE;
+    }
+
+    /**
+     * Get the properties unique to this chronicler that are 
+     * needed to restore it's state
+     * @return {unknown}
+     */
+    getChroniclerProperties(): unknown {
+        return {
+            logDirectory: this.logDirectory,
+            logName: this.logName,
+            rotationSettings: this.rotationSettings,
+            id: this.id,
+            name: this.name,
+            description: this.description
         }
     }
 }
