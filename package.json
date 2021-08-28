@@ -1,6 +1,6 @@
 {
   "name": "@curium.rocks/json-chronicler",
-  "version": "0.1.1-2",
+  "version": "0.1.1-3",
   "description": "Persists objects in JSON format to rolling archive files",
   "main": "build/src/index.js",
   "scripts": {
