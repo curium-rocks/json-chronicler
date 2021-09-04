@@ -120,6 +120,7 @@ export class JsonChronicler extends BaseChronicler implements IRotatingFileChron
             await this.rotateLog();
         }
         await this.fileHandle?.write(`${!this.firstWrite ? ',\n' : ''}${string}`);
+        this.firstWrite = false;
     }
 
     /**
@@ -201,6 +202,7 @@ export class JsonChronicler extends BaseChronicler implements IRotatingFileChron
         await oldHandle?.close();
         await this.compactLogs();
         this.lastRotationMs = new Date().getTime();
+        this.firstWrite = true;
         return name;
     }
 
