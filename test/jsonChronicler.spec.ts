@@ -5,6 +5,7 @@ import fs from "fs/promises";
 import * as path from "path";
 import { JsonChroniclerFactory } from '../src/jsonChroniclerFactory';
 import { IChroniclerDescription, IFormatSettings } from '@curium.rocks/data-emitter-base';
+import { PingPongEmitter } from '@curium.rocks/ping-pong-emitter';
 import crypto from 'crypto';
 
 const LOG_DIR = './logs';
@@ -141,7 +142,31 @@ describe( 'JsonChronicler', function() {
             } finally {
                 chronicler.dispose();
             }
-        })
+        });
+        it('should persist multiple records to in parseable format', async function() {
+            const emitter = new PingPongEmitter('test-ping-pong', 'test-name','test-desc', 50);
+           
+            const chronicler = new JsonChronicler(getOptions('saveMultipleRecordsTest'));
+            let fileName: string;
+
+            try {
+                emitter.onData(chronicler.saveRecord.bind(chronicler));
+                emitter.start();
+                await sleep(1000);
+                fileName = chronicler.getCurrentFilename();
+            } finally {
+                emitter.dispose();
+                chronicler.dispose();
+            }
+            const statResult = await fs.stat(path.join(LOG_DIR, fileName));
+            expect(statResult.isFile()).to.be.true;
+            expect(statResult.size).to.be.gt(0);
+            const json = await fs.readFile(path.join(LOG_DIR, fileName), {
+                encoding: 'utf-8'
+            });
+            const parseResult :unknown[] = JSON.parse(json);
+            expect(parseResult.length).to.be.greaterThan(0);
+        });
     });
     describe('compact()', function() {
         it('should compress any plain text records', async function() {
