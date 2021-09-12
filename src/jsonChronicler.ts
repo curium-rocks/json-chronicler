@@ -12,6 +12,7 @@ export interface JsonChroniclerOptions extends IClassifier {
     rotationSettings: RotationOptions;
     logDirectory: string;
     logName: string;
+    batchInterval?: number
 }
 
 export interface RotationOptions {
@@ -52,6 +53,10 @@ export function isRotationOptions (options: unknown) : boolean {
     return true;    
 }
 
+interface FileOperation {
+    (): Promise<unknown>;
+}
+
 /**
  * Persist events to a rolling JSON file
  */
@@ -66,6 +71,11 @@ export class JsonChronicler extends BaseChronicler implements IRotatingFileChron
     private readonly logDirectory: string;
     private readonly logger: LoggerFacade|undefined;
     private readonly rotationIntervalMs: number;
+    private readonly operationQueue: Array<FileOperation>;
+    private readonly batchInterval: number;
+    private operationTimer?: ReturnType<typeof setTimeout>;
+    private operationPromise?: Promise<void>;
+    private disposePromise?: Promise<void>;
     private lastRotationMs: number|undefined;
     private disposed = false;
 
@@ -88,11 +98,33 @@ export class JsonChronicler extends BaseChronicler implements IRotatingFileChron
         this.logDirectory = options.logDirectory;
         this.logName = options.logName;
         this.rotationIntervalMs = getMsFromRotationOptions(options.rotationSettings);
+        this.operationQueue = new Array<FileOperation>();
+        this.batchInterval = options.batchInterval || 100;
+        this.operationTimer = setTimeout(this.processFileOperations.bind(this), this.batchInterval);
         this._name = options.name;
         this._description = options.description;
         this._id = options.id;
     }
 
+    /**
+     * Processes file operations
+     */
+    private processFileOperations(): void {
+        this.logger?.debug(`Executing: processFileOperations for ${this.id}`);
+        this.operationPromise = new Promise(async (resolve) => {
+            let operation = this.operationQueue.pop();
+            while(operation != null) {
+                await operation();
+                operation = this.operationQueue.pop();
+            }
+            resolve();
+            this.operationPromise = undefined;
+            if(!this.disposed) {
+                this.logger?.debug(`Queueing: processFileOperations for ${this.id}`);
+                this.operationTimer = setTimeout(this.processFileOperations.bind(this), this.batchInterval);
+            }
+        });
+    }
 
     /**
      * @return {string} filename for next archive
@@ -111,18 +143,26 @@ export class JsonChronicler extends BaseChronicler implements IRotatingFileChron
         if(this.disposed) throw new Error("Object Disposed!");
         if(isStatusEvent(record)) this.logger?.debug('writing status event');
         if(isDataEvent(record)) this.logger?.debug('writing data event');
-        const string = JSON.stringify(record);
-        if(await this.shouldCreateFile()){
-            const fileName = this.generateFilename();
-            this.fileHandle = await this.createLogFile(fileName);
-            this.currentFile = fileName;
-            this.lastRotationMs = new Date().getTime();
-        }
-        if(this.shouldRotate()) {
-            await this.rotateLog();
-        }
-        await this.fileHandle?.write(`${!this.firstWrite ? ',\n' : ''}${string}`);
-        this.firstWrite = false;
+        return new Promise((resolveClientAwait) =>  {
+            this.operationQueue.push(() : Promise<void> => {
+                return new Promise(async (resolve) => {
+                    const string = JSON.stringify(record);
+                    if(await this.shouldCreateFile()){
+                        const fileName = this.generateFilename();
+                        this.fileHandle = await this.createLogFile(fileName);
+                        this.currentFile = fileName;
+                        this.lastRotationMs = new Date().getTime();
+                    }
+                    if(this.shouldRotate()) {
+                        await this.rotateLog();
+                    }
+                    await this.fileHandle?.write(`${!this.firstWrite ? ',\n' : ''}${string}`);
+                    this.firstWrite = false;
+                    resolve();
+                    resolveClientAwait();
+                });
+            });
+        });
     }
 
     /**
@@ -259,16 +299,50 @@ export class JsonChronicler extends BaseChronicler implements IRotatingFileChron
     }
 
     /**
+     * Flushes all queued file operations to disk
+     * @return {Promise<void>}
+     */
+    public async flush(): Promise<void> {
+        if(this.operationPromise) {
+            // if a ops is in progress it will flush the entire queue
+            await this.operationPromise;
+        } else {
+            if(this.operationTimer) clearTimeout(this.operationTimer);
+            // this immediatetly executes the flush and resets the timer
+            this.processFileOperations();
+            return this.operationPromise;
+        }
+    }
+
+    /**
      * Dipose of any resources managed by the chronicler that
      * aren't automatically cleaned up
+     * @return {Promise<void>}
      */
-    public dispose(): void {
+    public async disposeAsync(): Promise<void> {
+        if(this.disposed) return this.disposePromise;
         this.disposed = true;
-        if(this.fileHandle) {
-            this.fileHandle.write(']').then(()=>{
-                return this.fileHandle?.close();
-            })
-        }
+
+        // stop additional processing
+        if(this.operationTimer) clearTimeout(this.operationTimer);
+
+
+        this.disposePromise = new Promise(async (resolve) => {
+            // check if we have queued items but do not have an active process loop
+            if(this.operationPromise == null && this.operationQueue.length > 0) this.processFileOperations();
+
+
+            // if an operation is in progress wait for the queue to be drained
+            if(this.operationPromise) await this.operationPromise;
+
+            // if we have a file handle close up the json array and close the file handle
+            if(this.fileHandle) {
+                await this.fileHandle.write(']');
+                await this.fileHandle.close();
+            }
+            resolve();
+        });
+        return this.disposePromise;
     }
 
     /**
