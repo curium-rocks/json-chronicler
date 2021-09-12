@@ -57,7 +57,22 @@ const getOptions = (logName:string): JsonChroniclerOptions =>  {
     }
 }
 
-const factory = new JsonChroniclerFactory()
+const factory = new JsonChroniclerFactory();
+
+
+const expectThrowsAsync = async (method: Promise<void>, errorMessage: string) => {
+    let error:string|undefined;
+    try {
+      await method
+    }
+    catch (err) {
+      error = (err as Error).message;
+    }
+    if (error) {
+      expect(error).to.equal(errorMessage)
+    }
+  }
+
 
 describe('getMsFromRotationOptions()', function(){
     it('should sum everything', function() {
@@ -105,6 +120,8 @@ describe( 'JsonChronicler', function() {
             expect(recreatedChronciler.name).to.be.eq(chronicler.name);
             expect(recreatedChronciler.id).to.be.eq(chronicler.id);
             expect(JSON.stringify(recreatedChronciler.getChroniclerProperties())).to.be.eq(JSON.stringify(chronicler.getChroniclerProperties()));
+            await chronicler.disposeAsync();
+            await recreatedChronciler.disposeAsync();
         });
         it('Should allow ciphertext restoration', async function () {
             const chronicler = await factory.buildChronicler(DEFAULT_DESC) as JsonChronicler;
@@ -121,6 +138,8 @@ describe( 'JsonChronicler', function() {
             expect(recreatedChronciler.name).to.be.eq(chronicler.name);
             expect(recreatedChronciler.id).to.be.eq(chronicler.id);
             expect(JSON.stringify(recreatedChronciler.getChroniclerProperties())).to.be.eq(JSON.stringify(chronicler.getChroniclerProperties()));
+            await chronicler.disposeAsync();
+            await recreatedChronciler.disposeAsync();
         });
     })
     describe('saveRecord()', function () {
@@ -135,13 +154,13 @@ describe( 'JsonChronicler', function() {
                         }
                     }
                 })
-                const fileName = chronicler.getCurrentFilename();
-                const statResult = await fs.stat(path.join(LOG_DIR, fileName));
-                expect(statResult.isFile()).to.be.true;
-                expect(statResult.size).to.be.gt(0);
             } finally {
-                chronicler.dispose();
+                await chronicler.disposeAsync();
             }
+            const fileName = chronicler.getCurrentFilename();
+            const statResult = await fs.stat(path.join(LOG_DIR, fileName));
+            expect(statResult.isFile()).to.be.true;
+            expect(statResult.size).to.be.gt(0);
         });
         it('should persist multiple records to in parseable format', async function() {
             const emitter = new PingPongEmitter('test-ping-pong', 'test-name','test-desc', 50);
@@ -156,7 +175,7 @@ describe( 'JsonChronicler', function() {
                 fileName = chronicler.getCurrentFilename();
             } finally {
                 emitter.dispose();
-                chronicler.dispose();
+                await chronicler.disposeAsync();
             }
             const statResult = await fs.stat(path.join(LOG_DIR, fileName));
             expect(statResult.isFile()).to.be.true;
@@ -167,6 +186,58 @@ describe( 'JsonChronicler', function() {
             const parseResult :unknown[] = JSON.parse(json);
             expect(parseResult.length).to.be.greaterThan(0);
         });
+        it('should not allow writes after disposal', async function() {
+            const chronicler = new JsonChronicler(getOptions("saveDisposeTest"));
+            try {
+                await chronicler.saveRecord({
+                    toJSON(): Record<string, unknown> {
+                        return {
+                            "id": "test",
+                            "data": "test"
+                        }
+                    }
+                })
+                await chronicler.flush();
+                const fileName = chronicler.getCurrentFilename();
+                const statResult = await fs.stat(path.join(LOG_DIR, fileName));
+                expect(statResult.isFile()).to.be.true;
+                expect(statResult.size).to.be.gt(0);
+            } finally {
+                await chronicler.disposeAsync();
+            }
+            await expectThrowsAsync(chronicler.saveRecord({
+                toJSON(): Record<string, unknown> {
+                    return {
+                        "id": "test",
+                        "data": "test"
+                    }
+                }
+            }), "Object Disposed!");
+        });
+        it('should cleanly close when lots of writes are being queued', async function() {
+            const chronicler = new JsonChronicler(getOptions("closingWithLotsOfWrites"));
+            try {
+                for(let i = 0; i < 100; i++) {
+                    chronicler.saveRecord({
+                        toJSON(): Record<string, unknown> {
+                            return {
+                                "id": "test",
+                                "data": "test"
+                            }
+                        }
+                    });
+                }
+                
+            } finally {
+                await chronicler.disposeAsync();
+            }
+            const fileName = chronicler.getCurrentFilename();
+            const json = await fs.readFile(path.join(LOG_DIR, fileName), {
+                encoding: 'utf-8'
+            });
+            const data: Array<unknown> = JSON.parse(json);
+            expect(data.length).to.be.greaterThan(0);
+        })
     });
     describe('compact()', function() {
         it('should compress any plain text records', async function() {
@@ -181,7 +252,7 @@ describe( 'JsonChronicler', function() {
                 const oldFile = await fs.stat(path.join(LOG_DIR))
                 expect(oldFile.isFile()).to.be.false;
             } finally {
-                chronicler.dispose();
+                await chronicler.disposeAsync();
             }
         })
         it('should not compress logs for other chroniclers', async function() {
@@ -199,7 +270,7 @@ describe( 'JsonChronicler', function() {
                 const statResult = await fs.stat(path.join(LOG_DIR, nonMatchingFile));
                 expect(statResult.isFile()).to.be.true;
             } finally {
-                chronicler.dispose();
+                await chronicler.disposeAsync();
             }
         })
     })
@@ -215,6 +286,7 @@ describe( 'JsonChronicler', function() {
                         }
                     }
                 });
+                await chronicler.flush();
                 // verify the first file is in place
                 const firstName = chronicler.getCurrentFilename();
                 const statResult = await fs.stat(path.join(LOG_DIR, firstName));
@@ -234,7 +306,7 @@ describe( 'JsonChronicler', function() {
                 expect(compressedStat.isFile()).to.be.true;
 
             } finally {
-                chronicler.dispose();
+                await chronicler.disposeAsync();
             }
         })
     })
@@ -257,7 +329,7 @@ describe( 'JsonChronicler', function() {
                 expect(chronicler.timeSinceRotation()).to.be.eq(1);
 
             } finally {
-                chronicler.dispose();
+                await chronicler.disposeAsync();
             }
         })
     });
@@ -282,7 +354,7 @@ describe( 'JsonChronicler', function() {
                 expect(chronicler.timeTillRotation()).to.be.closeTo(seconds, 2);
 
             } finally {
-                chronicler.dispose();
+                await chronicler.disposeAsync();
             }
         });
     });
@@ -302,6 +374,7 @@ describe( 'JsonChronicler', function() {
                         }
                     }
                 });
+                await chronicler.flush();
                 // verify the first file is in place
                 const firstName = chronicler.getCurrentFilename();
                 const statResult = await fs.stat(path.join(LOG_DIR, firstName));
@@ -316,6 +389,7 @@ describe( 'JsonChronicler', function() {
                         }
                     }
                 });
+                await chronicler.flush();
                 const rotatedFile = chronicler.getCurrentFilename();
                 expect(rotatedFile).to.not.be.eq(firstName);
                 const rotatedStat = await fs.stat(path.join(LOG_DIR, rotatedFile));
@@ -326,7 +400,7 @@ describe( 'JsonChronicler', function() {
                 expect(compressedStat.isFile()).to.be.true;
 
             } finally {
-                chronicler.dispose();
+                await chronicler.disposeAsync();
             }
         })
     })
@@ -342,9 +416,10 @@ describe( 'JsonChronicler', function() {
                         }
                     }
                 });
+                await chronicler.flush();
                 fileName = chronicler.getCurrentFilename();
             } finally {
-                chronicler.dispose();
+                await chronicler.disposeAsync();
             }
             const fileContents = await fs.readFile(path.join(LOG_DIR, fileName), {
                 encoding: "utf8"
@@ -369,7 +444,7 @@ describe( 'JsonChronicler', function() {
                 });
                 fileName = chronicler.getCurrentFilename();
             } finally {
-                chronicler.dispose();
+                await chronicler.disposeAsync();
             }
             await sleep(500);
             let err:Error|null = null;
@@ -399,10 +474,11 @@ describe( 'JsonChronicler', function() {
                         }
                     }
                 })
+                await chronicler.flush();
                 const fileName = chronicler.getCurrentFilename();
                 expect(fileName).to.match(new RegExp(`${DEFAULT_OPTIONS.logName}\\.\\d*\\.json`));
             } finally {
-                chronicler.dispose();
+                await chronicler.disposeAsync();
             }
         })
         it('Should return N/A if not written to', async function() {
@@ -411,7 +487,7 @@ describe( 'JsonChronicler', function() {
                 const fileName = chronicler.getCurrentFilename();
                 expect(fileName).to.be.eq('N/A');
             } finally {
-                chronicler.dispose();
+                await chronicler.disposeAsync();
             }
         })
     })

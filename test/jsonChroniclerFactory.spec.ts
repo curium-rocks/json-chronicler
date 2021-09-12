@@ -10,7 +10,7 @@ const VALID_OPTION: IChroniclerDescription = {
     type: JsonChronicler.TYPE,
     description: 'test-description',
     chroniclerProperties: {
-        logName: 'test-logname',
+        logName: 'test-logname-factory',
         logDirectory: './logs',
         rotationSettings: {
             seconds: 300
@@ -32,6 +32,7 @@ describe( 'JsonChroniclerFactory', function() {
         it('Should build a JsonChronicler', async function() {
             const chronicler = await FACTORY.buildChronicler(VALID_OPTION);
             expect(chronicler).to.be.instanceOf(JsonChronicler);
+            await chronicler.disposeAsync();
         });
         it('Should reject invalid settings', async function() {
             let err:Error|null = null;
@@ -49,6 +50,7 @@ describe( 'JsonChroniclerFactory', function() {
             // build
             const chronicler = await ProviderSingleton.getInstance().buildChronicler(VALID_OPTION);
             expect(chronicler).to.be.instanceOf(JsonChronicler);
+            await chronicler.disposeAsync();
         });
     });
 });
