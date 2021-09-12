@@ -1,4 +1,4 @@
-import {LoggerFacade, IRotatingFileChronicler, IJsonSerializable, IClassifier} from '@curium.rocks/data-emitter-base';
+import {LoggerFacade, IRotatingFileChronicler, IJsonSerializable, IClassifier, IDataEvent, IStatusEvent, isStatusEvent, isDataEvent} from '@curium.rocks/data-emitter-base';
 import fs from 'fs/promises';
 import {pipeline} from 'stream/promises';
 import {createWriteStream, createReadStream} from "fs";
@@ -104,11 +104,13 @@ export class JsonChronicler extends BaseChronicler implements IRotatingFileChron
 
     /**
      *
-     * @param {IJsonSerializable} record
+     * @param {IJsonSerializable|IDataEvent|IStatusEvent} record
      * @return {Promise<void>}
      */
-    public async saveRecord(record: IJsonSerializable): Promise<void> {
+    public async saveRecord(record: IJsonSerializable|IDataEvent|IStatusEvent): Promise<void> {
         if(this.disposed) throw new Error("Object Disposed!");
+        if(isStatusEvent(record)) this.logger?.debug('writing status event');
+        if(isDataEvent(record)) this.logger?.debug('writing data event');
         const string = JSON.stringify(record);
         if(await this.shouldCreateFile()){
             const fileName = this.generateFilename();
