@@ -110,7 +110,7 @@ export class JsonChronicler extends BaseChronicler implements IRotatingFileChron
      * Processes file operations
      */
     private processFileOperations(): void {
-        this.logger?.debug(`Executing: processFileOperations for ${this.id}`);
+        this.logger?.trace(`Executing: processFileOperations for ${this.id}`);
         this.operationPromise = new Promise(async (resolve) => {
             let operation = this.operationQueue.pop();
             while(operation != null) {
@@ -120,7 +120,7 @@ export class JsonChronicler extends BaseChronicler implements IRotatingFileChron
             resolve();
             this.operationPromise = undefined;
             if(!this.disposed) {
-                this.logger?.debug(`Queueing: processFileOperations for ${this.id}`);
+                this.logger?.trace(`Queueing: processFileOperations for ${this.id}`);
                 this.operationTimer = setTimeout(this.processFileOperations.bind(this), this.batchInterval);
             }
         });
